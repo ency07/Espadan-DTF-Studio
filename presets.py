@@ -5,6 +5,7 @@ from pathlib import Path
 
 DEFAULTS = dict(ink_reduction=0, reduction_target='all', knockout_black=False,
                 knockout_white=False, black_tolerance=30, white_tolerance=30,
+                knockout_garment=False, garment_color=None, garment_tolerance=30,
                 preserve_glow=False, protect_highlights=False, protect_details=False,
                 glow_strength=75, highlight_strength=70, detail_strength=85,
                 detail_width_mm=.35, tone_enabled=False, shadow_reduction=50,
@@ -24,6 +25,7 @@ BUILTINS = {
     'Fine text & linework': dict(ink_reduction=20, protect_details=True, detail_strength=95),
 }
 RANGES = dict(ink_reduction=(0, 100), black_tolerance=(0, 100), white_tolerance=(0, 100),
+              garment_tolerance=(0, 100),
               glow_strength=(0, 100), highlight_strength=(0, 100), detail_strength=(0, 100),
               detail_width_mm=(.1, 2), shadow_reduction=(0, 100), midtone_reduction=(0, 100),
               light_reduction=(0, 100), pattern_size=(5, 100), angle=(0, 90),
@@ -54,6 +56,8 @@ def validate(config):
                 raise ValueError(f'{key} must be true or false.')
         elif key == 'custom_mask_path' and value is not None and not isinstance(value, str):
             raise ValueError('Invalid custom mask path.')
+        elif key == 'garment_color' and value is not None and not isinstance(value, str):
+            raise ValueError('Invalid garment color.')
     return result
 
 

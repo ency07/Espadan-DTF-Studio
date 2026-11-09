@@ -1,8 +1,9 @@
 import sys
 from pathlib import Path
 import numpy as np
-from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QCheckBox, QComboBox
+from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QCheckBox, QComboBox, QColorDialog
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor
 from halftone_ui import HalftoneUI
 from halftone_core import HalftoneProcessor
 import presets
@@ -30,6 +31,7 @@ class HalftoneApp:
         self.current_image_path = None
         self.source_image = None
         self.custom_mask_path = None
+        self.garment_knockout_color = None
         self.processed_image = None
         self.worker = None
         self.revision = 0
@@ -47,6 +49,7 @@ class HalftoneApp:
     def connect_signals(self):
         self.ui.btn_load.clicked.connect(self.load_image)
         self.ui.btn_load_mask.clicked.connect(self.load_mask)
+        self.ui.btn_garment_color.clicked.connect(self.pick_garment_color)
         self.ui.btn_save.clicked.connect(self.save_image)
         for key, widget in self.ui.config_widgets.items():
             if key == 'background':
@@ -77,6 +80,7 @@ class HalftoneApp:
             else:
                 values[key] = widget.value()
         values['custom_mask_path'] = self.custom_mask_path
+        values['garment_color'] = self.garment_knockout_color
         return values
 
     def apply_config(self, config):
@@ -100,6 +104,13 @@ class HalftoneApp:
                 finally:
                     widget.blockSignals(False)
             self.custom_mask_path = mask
+            self.garment_knockout_color = values.get('garment_color')
+            if self.garment_knockout_color:
+                self.ui.btn_garment_color.setStyleSheet(f'background-color: {self.garment_knockout_color};')
+                self.ui.lbl_garment_color.setText(self.garment_knockout_color)
+            else:
+                self.ui.btn_garment_color.setStyleSheet('')
+                self.ui.lbl_garment_color.setText('No color')
             self.ui.lbl_mask_status.setText('Custom mask loaded.' if mask else 'No custom mask loaded.')
             self.on_garment_changed()
             self.on_settings_changed()
@@ -184,6 +195,16 @@ class HalftoneApp:
         self.ui.combo_shape.blockSignals(False)
         self.on_settings_changed()
 
+    def pick_garment_color(self):
+        initial = QColor(self.garment_knockout_color) if self.garment_knockout_color else QColor('#111111')
+        color = QColorDialog.getColor(initial, self.ui, 'Pick garment color')
+        if not color.isValid():
+            return
+        self.garment_knockout_color = color.name()
+        self.ui.btn_garment_color.setStyleSheet(f'background-color: {self.garment_knockout_color};')
+        self.ui.lbl_garment_color.setText(self.garment_knockout_color)
+        self.on_settings_changed()
+
     def on_settings_changed(self, *_):
         if not self.applying_preset:
             self.ui.combo_preset.blockSignals(True)
@@ -213,6 +234,7 @@ class HalftoneApp:
         target = self.ui.combo_reduction_target.currentData()
         self.ui.slider_tolerance.setEnabled(self.ui.chk_knockout.isChecked() or target in ('black', 'both'))
         self.ui.slider_white_tolerance.setEnabled(self.ui.chk_knockout_white.isChecked() or target in ('white', 'both'))
+        self.ui.slider_garment_tolerance.setEnabled(self.ui.chk_knockout_garment.isChecked())
         self.ui.slider_size.setEnabled(not self.ui.chk_lpi.isChecked())
         cell = (self.ui.spin_dpi.value() / self.ui.spin_lpi.value()
                 if self.ui.chk_lpi.isChecked() else self.ui.slider_size.value())
@@ -228,7 +250,8 @@ class HalftoneApp:
         for key, text in [('shadow_reduction', 'Shadows'), ('midtone_reduction', 'Midtones'),
                           ('light_reduction', 'Highlights'), ('glow_strength', 'Glow protection'),
                           ('highlight_strength', 'Highlight protection'), ('detail_strength', 'Detail protection'),
-                          ('black_tolerance', 'Black tolerance'), ('white_tolerance', 'White tolerance')]:
+                          ('black_tolerance', 'Black tolerance'), ('white_tolerance', 'White tolerance'),
+                          ('garment_tolerance', 'Garment tolerance')]:
             self.ui.slider_titles[key].setText(f'{text}: {self.ui.config_widgets[key].value()}%')
         self.ui.slider_glow.setEnabled(self.ui.chk_glow.isChecked())
         self.ui.slider_highlights.setEnabled(self.ui.chk_highlights.isChecked())
@@ -257,6 +280,9 @@ class HalftoneApp:
                     black_tolerance=self.ui.slider_tolerance.value(),
                     knockout_white=self.ui.chk_knockout_white.isChecked(),
                     white_tolerance=self.ui.slider_white_tolerance.value(),
+                    knockout_garment=self.ui.chk_knockout_garment.isChecked(),
+                    garment_color=self.garment_knockout_color,
+                    garment_tolerance=self.ui.slider_garment_tolerance.value(),
                     custom_mask_path=self.custom_mask_path,
                     antialias=self.ui.chk_antialias.isChecked(),
                     ink_reduction=self.ui.slider_reduction.value(),

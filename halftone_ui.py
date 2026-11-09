@@ -264,6 +264,15 @@ class HalftoneUI(QWidget):
         coverage.addWidget(self.combo_reduction_target)
         self.chk_knockout = self.check('knockout_black', 'Remove black · black fabric', coverage)
         self.chk_knockout_white = self.check('knockout_white', 'Remove white · white fabric', coverage)
+        self.chk_knockout_garment = self.check('knockout_garment', 'Remove garment color', coverage)
+        garment_color_row = QHBoxLayout()
+        self.btn_garment_color = QPushButton('Pick garment color')
+        self.lbl_garment_color = QLabel('No color')
+        self.lbl_garment_color.setObjectName('muted')
+        garment_color_row.addWidget(self.btn_garment_color)
+        garment_color_row.addWidget(self.lbl_garment_color)
+        coverage.addLayout(garment_color_row)
+        self.slider_garment_tolerance, _ = self.slider('garment_tolerance', 'Garment tolerance', coverage)
 
         protection = self.group('03  /  KEEP THE DETAILS', sidebar_layout)
         self.chk_glow = self.check('preserve_glow', 'Preserve glow / soft edges', protection,

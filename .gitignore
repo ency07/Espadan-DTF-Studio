@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+dtf_env/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+build/
+OUTPUT/
+*.spec

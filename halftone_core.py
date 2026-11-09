@@ -43,7 +43,8 @@ class HalftoneProcessor:
     def process_image(image_path, pattern_size=30, angle=45, shape_name='dot',
                       alpha_halftone=True, knockout_black=False, black_tolerance=30,
                       custom_mask_path=None, antialias=True, knockout_white=False,
-                      white_tolerance=30, ink_reduction=0, reduction_target='all',
+                      white_tolerance=30, knockout_garment=False, garment_color=None,
+                      garment_tolerance=30, ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
                       detail_radius=2, tone_reduction=None, output_dpi=None,
@@ -71,6 +72,11 @@ class HalftoneProcessor:
             raise ValueError('Unknown pattern shape.')
         if shape_name == 'custom' and not custom_mask_path:
             raise ValueError('Load a custom mask before selecting custom shape.')
+        if knockout_garment:
+            if garment_tolerance is None or not np.isfinite(garment_tolerance) or not 0 <= garment_tolerance <= 100:
+                raise ValueError('Garment tolerance must be between 0 and 100.')
+            if garment_color is None:
+                raise ValueError('Set a garment color before enabling garment knockout.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -92,6 +98,15 @@ class HalftoneProcessor:
         if output_dpi is not None:
             info['dpi'] = (output_dpi, output_dpi)
         details = HalftoneProcessor.detail_mask(image, detail_radius) if protect_details else None
+        garment_rgb = None
+        if garment_color is not None:
+            if isinstance(garment_color, str):
+                hc = garment_color.strip().lstrip('#')
+                if len(hc) == 3:
+                    hc = ''.join(c * 2 for c in hc)
+                garment_rgb = (int(hc[0:2], 16), int(hc[2:4], 16), int(hc[4:6], 16))
+            else:
+                garment_rgb = tuple(int(c) for c in garment_color)
         source = np.asarray(image.convert('RGBA'))
         h, w = source.shape[:2]
         output = np.empty_like(source)
@@ -128,10 +143,19 @@ class HalftoneProcessor:
             white_match = 1 - np.clip(white_distance / max(1, white_tolerance * 2.55), 0, 1)
             black_match *= 1 - glow
             white_match *= 1 - glow
+            garment_match = np.zeros_like(alpha)
+            if knockout_garment and garment_rgb is not None:
+                diff = rgb - np.asarray(garment_rgb, dtype=np.float32)
+                dist = np.sqrt((diff ** 2).sum(axis=2))
+                scale = max(1.0, garment_tolerance * 2.55 * np.sqrt(3.0))
+                garment_match = 1 - np.clip(dist / scale, 0, 1)
+                garment_match *= 1 - glow
             if knockout_black:
                 alpha *= 1 - black_match
             if knockout_white:
                 alpha *= 1 - white_match
+            if knockout_garment and garment_rgb is not None:
+                alpha *= 1 - garment_match
             weights = {'all': 1, 'black': black_match, 'white': white_match,
                        'both': np.maximum(black_match, white_match)}
             protection = np.maximum(glow, highlight * highlight_strength / 100 if protect_highlights else 0)
