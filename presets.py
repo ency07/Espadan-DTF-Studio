@@ -34,7 +34,7 @@ RANGES = dict(ink_reduction=(0, 100), black_tolerance=(0, 100), white_tolerance=
               light_reduction=(0, 100), pattern_size=(5, 100), angle=(0, 90),
               print_width_cm=(.1, 200), output_dpi=(72, 1200), lpi=(5, 120))
 CHOICES = dict(reduction_target=('all', 'black', 'white', 'both'),
-               shape_name=('dot', 'line', 'square', 'cross', 'diamond', 'custom'),
+               shape_name=('dot', 'line', 'square', 'cross', 'diamond', 'euclidean', 'ellipse', 'custom'),
                background=('#000000', '#ffffff', 'transparent'))
 
 

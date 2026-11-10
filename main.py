@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import numpy as np
+from PIL import Image
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QCheckBox, QComboBox, QColorDialog
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -64,6 +65,7 @@ class HalftoneApp:
         self.ui.combo_preset.currentIndexChanged.connect(self.select_preset)
         self.ui.btn_save_preset.clicked.connect(self.save_preset)
         self.ui.btn_load_preset.clicked.connect(self.load_preset)
+        self.ui.chk_show_knockout.toggled.connect(lambda *_: self.refresh_preview())
         self.update_controls()
 
     def on_garment_changed(self, *_):
@@ -322,7 +324,7 @@ class HalftoneApp:
             QMessageBox.warning(self.ui, 'Render failed', error)
             return
         self.processed_image = result
-        self.ui.update_image_display(result, self.source_image)
+        self.refresh_preview()
         issues = HalftoneProcessor.validate_result(result)
         if issues:
             self.ui.lbl_render_status.setText('Rendered with warnings: ' + '; '.join(issues))
@@ -346,6 +348,24 @@ class HalftoneApp:
         self.worker = None
         if self.pending and not self.closing and not self.timer.isActive():
             self.start_render()
+
+    def refresh_preview(self):
+        if self.processed_image is None or self.source_image is None:
+            return
+        display = self.processed_image
+        try:
+            if self.ui.chk_show_knockout.isChecked():
+                src_a = np.asarray(self.source_image.getchannel('A'))
+                res_a = np.asarray(self.processed_image.getchannel('A'))
+                removed = (src_a > 0) & (res_a + 10 < src_a)
+                arr = np.asarray(self.processed_image).copy()
+                arr[removed, 0] = 255
+                arr[removed, 1] = 60
+                arr[removed, 2] = 60
+                display = Image.fromarray(arr, 'RGBA')
+        except Exception:
+            display = self.processed_image
+        self.ui.update_image_display(display, self.source_image)
 
     def save_image(self):
         if self.processed_image is None or not self.ui.btn_save.isEnabled():

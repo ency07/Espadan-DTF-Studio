@@ -25,3 +25,13 @@ class PatternLibrary:
     def diamond(x, y):
         
         return np.abs(np.sin(x)) + np.abs(np.cos(y)) - 1.0
+
+    @staticmethod
+    def euclidean(x, y):
+        
+        return np.sqrt(np.sin(x) ** 2 + np.cos(y) ** 2)
+
+    @staticmethod
+    def ellipse(x, y):
+        
+        return np.sqrt(np.sin(x) ** 2 + (np.cos(y) * 0.5) ** 2)

@@ -115,7 +115,7 @@ class HalftoneProcessor:
             raise ValueError('Output DPI must be between 72 and 1200.')
         if reduction_target not in ('all', 'black', 'white', 'both'):
             raise ValueError('Unknown reduction target.')
-        if shape_name not in ('dot', 'line', 'square', 'cross', 'diamond', 'custom'):
+        if shape_name not in ('dot', 'line', 'square', 'cross', 'diamond', 'euclidean', 'ellipse', 'custom'):
             raise ValueError('Unknown pattern shape.')
         if shape_name == 'custom' and not custom_mask_path:
             raise ValueError('Load a custom mask before selecting custom shape.')
