@@ -126,3 +126,14 @@ Branch: `mejoras-dtprep`. All additions are original implementations; no DTPrep 
 
 ### Tests
 - 76 automated tests total (all passing).
+
+## 0.008 (mejoras-dtprep) — Fases 10-11 (dithering, tooltips)
+
+### Added
+- **Optional dithering** (isolated, default off): Floyd-Steinberg and Bayer ordered modes in `process_image(..., dither_method=...)`, with PatternLibrary untouched. `dither_method=None` keeps the classic screening behavior.
+- **Professional tooltips** on every control (sliders, checkboxes, combos, buttons) explaining what each one does and what happens when you increase/decrease it.
+- **Quick guide** button (`? Guía rápida`) with a plain-language summary of all sections.
+- Tests: 93 automated tests total (dithering + UI tooltip coverage via offscreen Qt).
+
+### Tests
+- All 93 tests passing.
