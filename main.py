@@ -289,6 +289,7 @@ class HalftoneApp:
                     custom_mask_path=self.custom_mask_path,
                     antialias=self.ui.chk_antialias.isChecked(),
                     min_dot_px=config['min_dot_px'],
+                    halftone_entire=config['halftone_entire'],
                     ink_reduction=self.ui.slider_reduction.value(),
                     reduction_target=self.ui.combo_reduction_target.currentData(),
                     preserve_glow=config['preserve_glow'], protect_highlights=config['protect_highlights'],

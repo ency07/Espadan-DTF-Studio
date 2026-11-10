@@ -373,6 +373,8 @@ class HalftoneUI(QWidget):
         layout.addWidget(self.slider_angle)
         self.chk_alpha_halftone = self.check('alpha_halftone', 'Keep design colors', layout)
         self.chk_antialias = self.check('antialias', 'Smooth edges (anti-aliasing)', layout)
+        self.chk_halftone_entire = self.check('halftone_entire', 'Halftone entire design', layout,
+                                             'Apply halftone to solid areas too, for a softer feel.')
         self.spin_min_dot = self.spin('min_dot_px', 'Minimum dot size', 1, 15, layout, ' px')
         self.slider_tolerance, _ = self.slider('black_tolerance', 'Black tolerance', layout)
         self.slider_white_tolerance, _ = self.slider('white_tolerance', 'White tolerance', layout)

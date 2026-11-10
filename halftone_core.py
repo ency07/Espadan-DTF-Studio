@@ -90,6 +90,7 @@ class HalftoneProcessor:
                       custom_mask_path=None, antialias=True, knockout_white=False,
                       white_tolerance=30, knockout_garment=False, garment_color=None,
                       garment_tolerance=30, clean_haze=False, haze_threshold=20, shadow_boost=0, min_dot_px=1,
+                      halftone_entire=False,
                       ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
@@ -130,6 +131,8 @@ class HalftoneProcessor:
             raise ValueError('Shadow boost must be between 0 and 100.')
         if not isinstance(min_dot_px, (int, np.integer)) or isinstance(min_dot_px, bool) or not 1 <= min_dot_px <= 15:
             raise ValueError('Minimum dot size must be a whole number between 1 and 15.')
+        if not isinstance(halftone_entire, bool):
+            raise ValueError('halftone_entire must be true or false.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -182,6 +185,9 @@ class HalftoneProcessor:
             alpha = pixels[:, :, 3].astype(np.float32) / 255
             original_alpha = alpha.copy()
             light = (rgb[:, :, 0] * .299 + rgb[:, :, 1] * .587 + rgb[:, :, 2] * .114) / 255
+            if halftone_entire:
+                opaque = original_alpha >= 0.999
+                alpha = np.where(opaque, light, alpha)
             highlight = HalftoneProcessor.smoothstep(.65, .95, light)
             chroma = (rgb.max(axis=2) - rgb.min(axis=2)) / 255
             # Colored dark halos and existing soft-alpha edges are likely glow regions.
