@@ -361,6 +361,15 @@ class HalftoneUI(QWidget):
         self.combo_shape.addItems(['dot', 'line', 'square', 'cross', 'diamond', 'euclidean', 'ellipse', 'custom'])
         layout.addWidget(QLabel('Pattern shape'))
         layout.addWidget(self.combo_shape)
+        self.combo_dither = self.register('dither_method', StudioComboBox())
+        for name, value in [('Screening (default)', None), ('Floyd-Steinberg', 'floyd-steinberg'),
+                            ('Bayer ordered', 'bayer')]:
+            self.combo_dither.addItem(name, value)
+        self.combo_dither.setToolTip('Dithering mode for the halftone pattern. Screening is the classic '
+                                     'dot pattern; Floyd-Steinberg diffuses error for smoother tones; '
+                                     'Bayer is an ordered matrix.')
+        layout.addWidget(QLabel('Dithering method'))
+        layout.addWidget(self.combo_dither)
         self.lbl_size_val = QLabel('Pattern size: 30 px')
         self.slider_size = self.register('pattern_size', QSlider(Qt.Orientation.Horizontal))
         self.slider_size.setRange(5, 100)

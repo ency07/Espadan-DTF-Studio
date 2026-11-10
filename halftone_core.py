@@ -77,6 +77,44 @@ class HalftoneProcessor:
         return HalftoneProcessor.smoothstep(12, 60, contrast) * (alpha > 0)
 
     @staticmethod
+    def _floyd_steinberg(tone):
+        """1-bit Floyd-Steinberg dithering over a 2D tone array (0-1)."""
+        arr = np.clip(tone.astype(np.float64), 0.0, 1.0)
+        h, w = arr.shape
+        out = np.zeros((h, w), dtype=np.float32)
+        for y in range(h):
+            for x in range(w):
+                old = arr[y, x]
+                new = 1.0 if old > 0.5 else 0.0
+                out[y, x] = new
+                err = old - new
+                if x + 1 < w:
+                    arr[y, x + 1] += err * 7 / 16
+                if y + 1 < h:
+                    if x > 0:
+                        arr[y + 1, x - 1] += err * 3 / 16
+                    arr[y + 1, x] += err * 5 / 16
+                    if x + 1 < w:
+                        arr[y + 1, x + 1] += err * 1 / 16
+        return out
+
+    @staticmethod
+    def _bayer_matrix(order):
+        if order == 2:
+            return np.array([[0, 2], [3, 1]], dtype=np.float32)
+        m = HalftoneProcessor._bayer_matrix(order // 2)
+        return np.block([[4 * m, 4 * m + 2], [4 * m + 3, 4 * m + 1]]).astype(np.float32)
+
+    @staticmethod
+    def _bayer(tone, order=4):
+        """Ordered Bayer dithering over a 2D tone array (0-1)."""
+        m = HalftoneProcessor._bayer_matrix(order)
+        t = (m + 0.5) / float(order * order)
+        h, w = tone.shape
+        th = np.tile(t, (h // order + 1, w // order + 1))[:h, :w]
+        return (tone > th).astype(np.float32)
+
+    @staticmethod
     def load_image(path):
         with Image.open(path) as source:
             info = source.info.copy()
@@ -90,7 +128,7 @@ class HalftoneProcessor:
                       custom_mask_path=None, antialias=True, knockout_white=False,
                       white_tolerance=30, knockout_garment=False, garment_color=None,
                       garment_tolerance=30, clean_haze=False, haze_threshold=20, shadow_boost=0, min_dot_px=1,
-                      halftone_entire=False,
+                      halftone_entire=False, dither_method=None,
                       ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
@@ -133,6 +171,8 @@ class HalftoneProcessor:
             raise ValueError('Minimum dot size must be a whole number between 1 and 15.')
         if not isinstance(halftone_entire, bool):
             raise ValueError('halftone_entire must be true or false.')
+        if dither_method is not None and dither_method not in ('floyd-steinberg', 'bayer'):
+            raise ValueError('Unknown dithering method.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -246,14 +286,21 @@ class HalftoneProcessor:
                 value = np.where(tone <= 0, 0, np.where(tone >= 1, 1, value))
                 return np.rint(value * 255).astype(np.uint8)
 
-            if alpha_halftone:
-                output[start:stop, :, :3] = pixels[:, :, :3]
+            tone = alpha if alpha_halftone else (
+                (rgb[:, :, 0] * .299 + rgb[:, :, 1] * .587 + rgb[:, :, 2] * .114) / 255)
+            if dither_method == 'floyd-steinberg':
+                rendered_alpha = (HalftoneProcessor._floyd_steinberg(tone) * 255).astype(np.uint8)
+            elif dither_method == 'bayer':
+                rendered_alpha = (HalftoneProcessor._bayer(tone) * 255).astype(np.uint8)
+            elif alpha_halftone:
                 rendered_alpha = threshold(alpha)
             else:
-                gray = (rgb[:, :, 0] * .299 + rgb[:, :, 1] * .587 + rgb[:, :, 2] * .114) / 255
-                output[start:stop, :, :3] = threshold(gray)[:, :, None]
                 rendered_alpha = (threshold(alpha) if ink_reduction or tone_reduction is not None else
                                   np.rint(alpha * 255).astype(np.uint8))
+            if alpha_halftone:
+                output[start:stop, :, :3] = pixels[:, :, :3]
+            else:
+                output[start:stop, :, :3] = threshold(tone)[:, :, None]
             if preserve_glow and antialias:
                 # Keep existing soft halo transitions rather than breaking them into islands.
                 blend = glow * soft_edge
