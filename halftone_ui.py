@@ -373,6 +373,7 @@ class HalftoneUI(QWidget):
         layout.addWidget(self.slider_angle)
         self.chk_alpha_halftone = self.check('alpha_halftone', 'Keep design colors', layout)
         self.chk_antialias = self.check('antialias', 'Smooth edges (anti-aliasing)', layout)
+        self.spin_min_dot = self.spin('min_dot_px', 'Minimum dot size', 1, 15, layout, ' px')
         self.slider_tolerance, _ = self.slider('black_tolerance', 'Black tolerance', layout)
         self.slider_white_tolerance, _ = self.slider('white_tolerance', 'White tolerance', layout)
         self.btn_load_mask = QPushButton('Load custom mask')

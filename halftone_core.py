@@ -10,6 +10,51 @@ class HalftoneProcessor:
         return t * t * (3 - 2 * t)
 
     @staticmethod
+    def _remove_small_components(arr, min_area):
+        """Zero connected components (4-connectivity) whose area < min_area."""
+        mask = arr > 0
+        if not mask.any():
+            return arr
+        h, w = mask.shape
+        parent = np.arange(h * w, dtype=np.int32)
+
+        def find(x):
+            root = x
+            while parent[root] != root:
+                root = parent[root]
+            while parent[x] != root:
+                parent[x], x = root, parent[x]
+            return root
+
+        # Union right neighbors.
+        ys, xs = np.where(mask[:, :-1] & mask[:, 1:])
+        for y, x in zip(ys.tolist(), xs.tolist()):
+            a = y * w + x
+            b = a + 1
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+        # Union down neighbors.
+        ys, xs = np.where(mask[:-1, :] & mask[1:, :])
+        for y, x in zip(ys.tolist(), xs.tolist()):
+            a = y * w + x
+            b = a + w
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        flat_idx = np.where(mask.ravel())[0]
+        roots = np.array([find(i) for i in flat_idx.tolist()], dtype=np.int32)
+        unique, counts = np.unique(roots, return_counts=True)
+        small = set(unique[counts < min_area].tolist())
+        if small:
+            remove = np.isin(roots, list(small))
+            flat = arr.ravel()
+            flat[flat_idx[remove]] = 0
+            arr[:] = flat.reshape(h, w)
+        return arr
+
+    @staticmethod
     def detail_mask(image, radius):
         """Local top/bottom hats detect strokes narrower than the filter window.
 
@@ -44,7 +89,7 @@ class HalftoneProcessor:
                       alpha_halftone=True, knockout_black=False, black_tolerance=30,
                       custom_mask_path=None, antialias=True, knockout_white=False,
                       white_tolerance=30, knockout_garment=False, garment_color=None,
-                      garment_tolerance=30, clean_haze=False, haze_threshold=20, shadow_boost=0,
+                      garment_tolerance=30, clean_haze=False, haze_threshold=20, shadow_boost=0, min_dot_px=1,
                       ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
@@ -83,6 +128,8 @@ class HalftoneProcessor:
                 raise ValueError('Haze threshold must be between 0 and 100.')
         if shadow_boost is not None and (not np.isfinite(shadow_boost) or not 0 <= shadow_boost <= 100):
             raise ValueError('Shadow boost must be between 0 and 100.')
+        if not isinstance(min_dot_px, (int, np.integer)) or isinstance(min_dot_px, bool) or not 1 <= min_dot_px <= 15:
+            raise ValueError('Minimum dot size must be a whole number between 1 and 15.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -217,6 +264,10 @@ class HalftoneProcessor:
                 factor = 1.0 + (shadow_boost / 100.0) * (1.0 - light)
                 strip_rgb = strip_rgb * np.where(boost_mask[:, :, None], factor[:, :, None], 1.0)
                 output[start:stop, :, :3] = np.clip(strip_rgb, 0, 255).astype(np.uint8)
+            if min_dot_px and min_dot_px >= 2:
+                alpha_slice = output[start:stop, :, 3].copy()
+                HalftoneProcessor._remove_small_components(alpha_slice, min_dot_px * min_dot_px)
+                output[start:stop, :, 3] = alpha_slice
         result = Image.fromarray(output)
         if clean_haze:
             alpha_arr = np.asarray(result.getchannel('A'), dtype=np.float32)

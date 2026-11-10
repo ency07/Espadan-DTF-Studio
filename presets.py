@@ -6,7 +6,7 @@ from pathlib import Path
 DEFAULTS = dict(ink_reduction=0, reduction_target='all', knockout_black=False,
                 knockout_white=False, black_tolerance=30, white_tolerance=30,
                 knockout_garment=False, garment_color=None, garment_tolerance=30,
-                clean_haze=False, haze_threshold=20, shadow_boost=0,
+                clean_haze=False, haze_threshold=20, shadow_boost=0, min_dot_px=2,
                 preserve_glow=False, protect_highlights=False, protect_details=False,
                 glow_strength=75, highlight_strength=70, detail_strength=85,
                 detail_width_mm=.35, tone_enabled=False, shadow_reduction=50,
@@ -27,6 +27,7 @@ BUILTINS = {
 }
 RANGES = dict(ink_reduction=(0, 100), black_tolerance=(0, 100), white_tolerance=(0, 100),
               garment_tolerance=(0, 100), haze_threshold=(0, 100), shadow_boost=(0, 100),
+              min_dot_px=(1, 15),
               glow_strength=(0, 100), highlight_strength=(0, 100), detail_strength=(0, 100),
               detail_width_mm=(.1, 2), shadow_reduction=(0, 100), midtone_reduction=(0, 100),
               light_reduction=(0, 100), pattern_size=(5, 100), angle=(0, 90),
