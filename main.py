@@ -323,6 +323,11 @@ class HalftoneApp:
             return
         self.processed_image = result
         self.ui.update_image_display(result, self.source_image)
+        issues = HalftoneProcessor.validate_result(result)
+        if issues:
+            self.ui.lbl_render_status.setText('Rendered with warnings: ' + '; '.join(issues))
+            self.ui.btn_save.setEnabled(True)
+            return
         original_alpha = np.asarray(self.source_image.getchannel('A'), dtype=np.float32).mean()
         result_alpha = np.asarray(result.getchannel('A'), dtype=np.float32).mean()
         change = (1 - result_alpha / original_alpha) * 100 if original_alpha else 0

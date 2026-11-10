@@ -95,3 +95,22 @@ This entry covers the cumulative changes from the original **0.001** release to 
 Glow and detail protection are image-based heuristics. This release does not recognize text, generate luminous or metallic ink, or directly control a RIP's white underbase. Coverage estimates do not measure ink usage or fabric breathability. The RIP must preserve transparent gaps in the underbase, and the result should be checked with sample prints.
 
 See [README.md](README.md) for usage and settings.
+
+---
+
+## 0.006 (mejoras-dtprep) — Features inspired by DTPrep (clean-room)
+
+Branch: `mejoras-dtprep`. All additions are original implementations; no DTPrep code or brand was copied.
+
+### Added
+- **Garment color knockout**: remove any garment color (not just black/white), with color picker, tolerance slider, and glow protection. Presets store `garment_color` and `garment_tolerance`.
+- **Clean semi-transparent haze**: remove stray low-alpha pixels that cause white haze, with adjustable threshold.
+- **Shadow color boost**: restore color intensity in shadow areas (0-100%).
+- **Minimum dot size**: remove connected components smaller than N×N pixels (area-based, 4-connectivity).
+- **Halftone entire design**: apply halftone to solid/opaque areas too, for a softer feel.
+- **Export QA**: `validate_result()` checks dimensions, mode, DPI, fully-transparent output, and warns in the status bar.
+- Tests: 48 automated tests across phases 1-6 (core + presets + QA). `.gitignore` for venv, pycache, and generated PNGs. `Ejecutar Espadan.bat` launcher.
+
+### Changed
+- `process_image()` extended with new optional parameters (all default to no-op for backward compatibility).
+- Presets schema extended; old presets without new keys still validate.

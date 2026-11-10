@@ -143,6 +143,19 @@ Export: Click Export PNG to generate a RIP-ready file with preserved transparenc
 
 **Printing note:** Glow and fine-detail protection are image-based estimates, rather than text recognition or semantic segmentation. Stronger protection leaves more coverage. The displayed coverage reduction estimates mean alpha, not actual ink usage or fabric breathability. Smooth edges produces intermediate alpha; disable it if your RIP requires hard color-output halftones. The RIP must preserve transparent gaps in the white underbase. White artwork and the RIP-generated underbase are different; the application does not directly control that layer. Verify the appearance, fine lettering, stretch, and wash performance with sample prints.
 
+## 🆕 What's new in the `mejoras-dtprep` branch
+
+The `mejoras-dtprep` branch extends 0.005 with features inspired by commercial DTPrep tooling, implemented clean-room:
+
+- **Garment color knockout** — remove any garment color (color picker + tolerance), not just black/white.
+- **Clean semi-transparent haze** — remove stray low-alpha pixels that cause white haze.
+- **Shadow color boost** — restore color intensity in shadows.
+- **Minimum dot size** — remove connected components smaller than N×N pixels.
+- **Halftone entire design** — halftone solid areas too, for a softer feel.
+- **Export QA** — automatic validation of the exported result (dimensions, DPI, transparency).
+
+See `PLAN_MEJORAS.md` and `CHANGELOG.md` for details.
+
 **🖼️ Version 0.005 Screenshots:**
 
 Main workspace with simple protection controls:

@@ -290,3 +290,36 @@ class HalftoneProcessor:
     def save_image(image, path):
         options = {key: image.info[key] for key in ('dpi', 'icc_profile') if key in image.info}
         image.save(path, format='PNG', **options)
+
+    @staticmethod
+    def validate_result(image, min_dot_px=1):
+        """Return a list of QA issues (empty list means OK)."""
+        issues = []
+        if image is None:
+            issues.append('No image produced.')
+            return issues
+        if image.mode != 'RGBA':
+            issues.append(f'Unexpected mode: {image.mode} (expected RGBA).')
+        w, h = image.size
+        if w <= 0 or h <= 0:
+            issues.append('Invalid dimensions.')
+        if w * h > 60_000_000:
+            issues.append('Output exceeds 60 million pixels.')
+        alpha = np.asarray(image.getchannel('A')) if image.mode == 'RGBA' else None
+        if alpha is not None:
+            if alpha.size == 0:
+                issues.append('Empty alpha channel.')
+            elif alpha.max() == 0:
+                issues.append('Output is fully transparent.')
+            else:
+                mean_a = float(alpha.mean())
+                if mean_a < 1 and alpha.max() > 0:
+                    issues.append('Almost all pixels are transparent (check knockout settings).')
+        dpi = image.info.get('dpi')
+        if dpi is not None:
+            try:
+                if not (72 <= float(dpi[0]) <= 1200):
+                    issues.append(f'DPI out of range: {dpi[0]}.')
+            except (TypeError, ValueError, IndexError):
+                issues.append('Invalid DPI metadata.')
+        return issues

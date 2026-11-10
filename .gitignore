@@ -18,3 +18,7 @@ OUTPUT/
 # Generated test outputs
 DTF_Ready*.png
 tests/*.png
+
+# PyInstaller output
+dist/
+build/
