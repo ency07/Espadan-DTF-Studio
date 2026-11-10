@@ -289,10 +289,12 @@ class HalftoneProcessor:
     @staticmethod
     def save_image(image, path):
         options = {key: image.info[key] for key in ('dpi', 'icc_profile') if key in image.info}
-        image.save(path, format='PNG', **options)
+        ext = str(path).lower()
+        fmt = 'TIFF' if ext.endswith(('.tif', '.tiff')) else 'PNG'
+        image.save(path, format=fmt, **options)
 
     @staticmethod
-    def validate_result(image, min_dot_px=1):
+    def validate_result(image, source_image=None, min_dot_px=1):
         """Return a list of QA issues (empty list means OK)."""
         issues = []
         if image is None:
@@ -315,6 +317,18 @@ class HalftoneProcessor:
                 mean_a = float(alpha.mean())
                 if mean_a < 1 and alpha.max() > 0:
                     issues.append('Almost all pixels are transparent (check knockout settings).')
+                # Too many semi-transparent pixels (haze risk).
+                partial_ratio = float(((alpha > 0) & (alpha < 255)).mean())
+                if partial_ratio > 0.9:
+                    issues.append(f'Too many semi-transparent pixels ({partial_ratio:.0%}); consider haze cleanup or lower alpha.')
+        # Compare with source for excessive removal.
+        if source_image is not None and source_image.mode == 'RGBA' and alpha is not None:
+            src_a = np.asarray(source_image.getchannel('A'), dtype=np.float32)
+            res_a = np.asarray(image.getchannel('A'), dtype=np.float32)
+            src_mean = float(src_a.mean())
+            res_mean = float(res_a.mean())
+            if src_mean > 0 and res_mean < 0.15 * src_mean:
+                issues.append('Coverage reduced by more than 85%; check knockout settings.')
         dpi = image.info.get('dpi')
         if dpi is not None:
             try:

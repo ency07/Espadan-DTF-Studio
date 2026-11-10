@@ -114,3 +114,15 @@ Branch: `mejoras-dtprep`. All additions are original implementations; no DTPrep 
 ### Changed
 - `process_image()` extended with new optional parameters (all default to no-op for backward compatibility).
 - Presets schema extended; old presets without new keys still validate.
+
+## 0.007 (mejoras-dtprep) — Fases 7-9 (formas, preview, extras)
+
+### Added
+- New halftone shapes: **euclidean** and **ellipse** (PatternLibrary + UI + presets + tests).
+- **Knockout mask overlay** preview (toolbar checkbox) to visualize removed areas.
+- **TIFF export** alongside PNG (auto-detected by extension, DPI/ICC preserved).
+- Extended **QA validation**: warns on excessive semi-transparent pixels and on >85% coverage removal vs. source.
+- New built-in presets: Colored garment · knockout, Haze cleanup, Soft shadows, Full halftone texture, Noisy detail cleanup, Euclidean dots, Ellipse dots.
+
+### Tests
+- 76 automated tests total (all passing).

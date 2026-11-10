@@ -325,7 +325,7 @@ class HalftoneApp:
             return
         self.processed_image = result
         self.refresh_preview()
-        issues = HalftoneProcessor.validate_result(result)
+        issues = HalftoneProcessor.validate_result(result, self.source_image)
         if issues:
             self.ui.lbl_render_status.setText('Rendered with warnings: ' + '; '.join(issues))
             self.ui.btn_save.setEnabled(True)
@@ -370,10 +370,11 @@ class HalftoneApp:
     def save_image(self):
         if self.processed_image is None or not self.ui.btn_save.isEnabled():
             return
-        path, _ = QFileDialog.getSaveFileName(self.ui, 'Export for RIP', 'DTF_Ready.png', 'PNG Files (*.png)')
+        path, _ = QFileDialog.getSaveFileName(self.ui, 'Export for RIP', 'DTF_Ready.png',
+                                              'PNG/TIFF (*.png *.tif *.tiff)')
         if not path:
             return
-        if not path.lower().endswith('.png'):
+        if not path.lower().endswith(('.png', '.tif', '.tiff')):
             path += '.png'
         try:
             HalftoneProcessor.save_image(self.processed_image, path)

@@ -17,7 +17,7 @@ class TestValidateResult(unittest.TestCase):
 
     def test_valid_image_ok(self):
         p = os.path.join(self.tmp, 'ok.png')
-        Image.new('RGBA', (32, 32), (100, 150, 200, 200)).save(p)
+        Image.new('RGBA', (32, 32), (100, 150, 200, 255)).save(p)
         img = Image.open(p)
         issues = HalftoneProcessor.validate_result(img)
         self.assertEqual(issues, [])
