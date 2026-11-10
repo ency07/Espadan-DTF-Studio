@@ -409,6 +409,7 @@ class HalftoneUI(QWidget):
         self.chk_clean_haze = self.check('clean_haze', 'Clean semi-transparent haze', layout,
                                         'Remove stray low-alpha pixels that cause white haze.')
         self.slider_haze_threshold, _ = self.slider('haze_threshold', 'Haze threshold', layout)
+        self.slider_shadow_boost, _ = self.slider('shadow_boost', 'Shadow color boost', layout)
         self.advanced_panel.addTab(tones, 'Protection')
 
     def toggle_advanced(self, checked):

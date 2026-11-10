@@ -252,7 +252,8 @@ class HalftoneApp:
                           ('highlight_strength', 'Highlight protection'), ('detail_strength', 'Detail protection'),
                           ('black_tolerance', 'Black tolerance'), ('white_tolerance', 'White tolerance'),
                           ('garment_tolerance', 'Garment tolerance'),
-                          ('haze_threshold', 'Haze threshold')]:
+                          ('haze_threshold', 'Haze threshold'),
+                          ('shadow_boost', 'Shadow boost')]:
             self.ui.slider_titles[key].setText(f'{text}: {self.ui.config_widgets[key].value()}%')
         self.ui.slider_glow.setEnabled(self.ui.chk_glow.isChecked())
         self.ui.slider_highlights.setEnabled(self.ui.chk_highlights.isChecked())
@@ -294,6 +295,7 @@ class HalftoneApp:
                     highlight_strength=config['highlight_strength'], detail_strength=config['detail_strength'],
                     detail_radius=max(1, min(15, round(config['detail_width_mm'] / 25.4 * dpi / 2))),
                     clean_haze=config['clean_haze'], haze_threshold=config['haze_threshold'],
+                    shadow_boost=config['shadow_boost'],
                     tone_reduction=(config['shadow_reduction'], config['midtone_reduction'], config['light_reduction'])
                     if config['tone_enabled'] else None,
                     output_dpi=config['output_dpi'] if config['print_size_enabled'] or config['lpi_enabled'] else None,

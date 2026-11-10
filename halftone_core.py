@@ -44,7 +44,7 @@ class HalftoneProcessor:
                       alpha_halftone=True, knockout_black=False, black_tolerance=30,
                       custom_mask_path=None, antialias=True, knockout_white=False,
                       white_tolerance=30, knockout_garment=False, garment_color=None,
-                      garment_tolerance=30, clean_haze=False, haze_threshold=20,
+                      garment_tolerance=30, clean_haze=False, haze_threshold=20, shadow_boost=0,
                       ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
@@ -81,6 +81,8 @@ class HalftoneProcessor:
         if clean_haze:
             if haze_threshold is None or not np.isfinite(haze_threshold) or not 0 <= haze_threshold <= 100:
                 raise ValueError('Haze threshold must be between 0 and 100.')
+        if shadow_boost is not None and (not np.isfinite(shadow_boost) or not 0 <= shadow_boost <= 100):
+            raise ValueError('Shadow boost must be between 0 and 100.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -209,6 +211,12 @@ class HalftoneProcessor:
                 blend = details[start:stop] * detail_strength / 100
                 rendered_alpha = rendered_alpha * (1 - blend) + alpha * 255 * blend
             output[start:stop, :, 3] = np.rint(rendered_alpha).astype(np.uint8)
+            if shadow_boost and shadow_boost > 0:
+                strip_rgb = output[start:stop, :, :3].astype(np.float32)
+                boost_mask = (light < 0.3) & (alpha > 0)
+                factor = 1.0 + (shadow_boost / 100.0) * (1.0 - light)
+                strip_rgb = strip_rgb * np.where(boost_mask[:, :, None], factor[:, :, None], 1.0)
+                output[start:stop, :, :3] = np.clip(strip_rgb, 0, 255).astype(np.uint8)
         result = Image.fromarray(output)
         if clean_haze:
             alpha_arr = np.asarray(result.getchannel('A'), dtype=np.float32)
