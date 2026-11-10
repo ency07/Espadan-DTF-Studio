@@ -14,3 +14,7 @@ Thumbs.db
 build/
 OUTPUT/
 *.spec
+
+# Generated test outputs
+DTF_Ready*.png
+tests/*.png

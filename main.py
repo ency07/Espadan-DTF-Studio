@@ -251,12 +251,14 @@ class HalftoneApp:
                           ('light_reduction', 'Highlights'), ('glow_strength', 'Glow protection'),
                           ('highlight_strength', 'Highlight protection'), ('detail_strength', 'Detail protection'),
                           ('black_tolerance', 'Black tolerance'), ('white_tolerance', 'White tolerance'),
-                          ('garment_tolerance', 'Garment tolerance')]:
+                          ('garment_tolerance', 'Garment tolerance'),
+                          ('haze_threshold', 'Haze threshold')]:
             self.ui.slider_titles[key].setText(f'{text}: {self.ui.config_widgets[key].value()}%')
         self.ui.slider_glow.setEnabled(self.ui.chk_glow.isChecked())
         self.ui.slider_highlights.setEnabled(self.ui.chk_highlights.isChecked())
         self.ui.slider_details.setEnabled(self.ui.chk_details.isChecked())
         self.ui.spin_detail_width.setEnabled(self.ui.chk_details.isChecked())
+        self.ui.slider_haze_threshold.setEnabled(self.ui.chk_clean_haze.isChecked())
         self.ui.spin_width.setEnabled(self.ui.chk_print_size.isChecked())
         self.ui.spin_dpi.setEnabled(self.ui.chk_print_size.isChecked() or self.ui.chk_lpi.isChecked())
         self.ui.spin_lpi.setEnabled(self.ui.chk_lpi.isChecked())
@@ -291,6 +293,7 @@ class HalftoneApp:
                     protect_details=config['protect_details'], glow_strength=config['glow_strength'],
                     highlight_strength=config['highlight_strength'], detail_strength=config['detail_strength'],
                     detail_radius=max(1, min(15, round(config['detail_width_mm'] / 25.4 * dpi / 2))),
+                    clean_haze=config['clean_haze'], haze_threshold=config['haze_threshold'],
                     tone_reduction=(config['shadow_reduction'], config['midtone_reduction'], config['light_reduction'])
                     if config['tone_enabled'] else None,
                     output_dpi=config['output_dpi'] if config['print_size_enabled'] or config['lpi_enabled'] else None,

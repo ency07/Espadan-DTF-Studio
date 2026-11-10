@@ -44,7 +44,8 @@ class HalftoneProcessor:
                       alpha_halftone=True, knockout_black=False, black_tolerance=30,
                       custom_mask_path=None, antialias=True, knockout_white=False,
                       white_tolerance=30, knockout_garment=False, garment_color=None,
-                      garment_tolerance=30, ink_reduction=0, reduction_target='all',
+                      garment_tolerance=30, clean_haze=False, haze_threshold=20,
+                      ink_reduction=0, reduction_target='all',
                       preserve_glow=False, protect_highlights=False, protect_details=False,
                       glow_strength=75, highlight_strength=70, detail_strength=85,
                       detail_radius=2, tone_reduction=None, output_dpi=None,
@@ -77,6 +78,9 @@ class HalftoneProcessor:
                 raise ValueError('Garment tolerance must be between 0 and 100.')
             if garment_color is None:
                 raise ValueError('Set a garment color before enabling garment knockout.')
+        if clean_haze:
+            if haze_threshold is None or not np.isfinite(haze_threshold) or not 0 <= haze_threshold <= 100:
+                raise ValueError('Haze threshold must be between 0 and 100.')
         image = (image_path.copy() if isinstance(image_path, Image.Image)
                  else HalftoneProcessor.load_image(image_path))
         if cancelled is not None and cancelled():
@@ -206,6 +210,12 @@ class HalftoneProcessor:
                 rendered_alpha = rendered_alpha * (1 - blend) + alpha * 255 * blend
             output[start:stop, :, 3] = np.rint(rendered_alpha).astype(np.uint8)
         result = Image.fromarray(output)
+        if clean_haze:
+            alpha_arr = np.asarray(result.getchannel('A'), dtype=np.float32)
+            alpha_threshold = haze_threshold / 100.0 * 255.0
+            # Remove stray semi-transparent pixels (white haze).
+            alpha_arr[alpha_arr < alpha_threshold] = 0
+            result.putalpha(Image.fromarray(alpha_arr.astype(np.uint8), mode='L'))
         for key in ('dpi', 'icc_profile'):
             if key in info:
                 result.info[key] = info[key]

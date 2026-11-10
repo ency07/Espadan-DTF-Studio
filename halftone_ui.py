@@ -406,6 +406,9 @@ class HalftoneUI(QWidget):
         self.slider_highlights, _ = self.slider('highlight_strength', 'Highlight protection', layout)
         self.slider_details, _ = self.slider('detail_strength', 'Detail protection', layout)
         self.spin_detail_width = self.spin('detail_width_mm', 'Fine stroke width', .1, 2, layout, ' mm', 2)
+        self.chk_clean_haze = self.check('clean_haze', 'Clean semi-transparent haze', layout,
+                                        'Remove stray low-alpha pixels that cause white haze.')
+        self.slider_haze_threshold, _ = self.slider('haze_threshold', 'Haze threshold', layout)
         self.advanced_panel.addTab(tones, 'Protection')
 
     def toggle_advanced(self, checked):
