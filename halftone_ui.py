@@ -2,7 +2,8 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSlider, QGroupBox, QCheckBox, QComboBox,
                              QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
                              QDialog, QScrollArea, QToolButton, QTabWidget,
-                             QDoubleSpinBox, QSpinBox, QFrame, QStyle, QStyleOptionButton, QSizePolicy)
+                             QDoubleSpinBox, QSpinBox, QFrame, QStyle, QStyleOptionButton,
+                             QSizePolicy, QMessageBox)
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QDesktopServices, QColor, QBrush, QPen
 from PIL.ImageQt import ImageQt
@@ -169,12 +170,15 @@ class HalftoneUI(QWidget):
         parent_layout.addWidget(group)
         return layout
 
-    def slider(self, key, label, layout):
+    def slider(self, key, label, layout, tooltip=''):
         title = QLabel(label)
         slider = self.register(key, QSlider(Qt.Orientation.Horizontal))
         self.slider_titles[key] = title
         slider.setRange(0, 100)
         slider.setValue(DEFAULTS[key])
+        if tooltip:
+            slider.setToolTip(tooltip)
+            title.setToolTip(tooltip)
         layout.addWidget(title)
         layout.addWidget(slider)
         slider.valueChanged.connect(lambda value: title.setText(f'{label}: {value}%'))
@@ -188,15 +192,20 @@ class HalftoneUI(QWidget):
         layout.addWidget(widget)
         return widget
 
-    def spin(self, key, label, low, high, layout, suffix='', decimals=1):
+    def spin(self, key, label, low, high, layout, suffix='', decimals=1, tooltip=''):
         row = QHBoxLayout()
-        row.addWidget(QLabel(label))
+        title = QLabel(label)
+        if tooltip:
+            title.setToolTip(tooltip)
+        row.addWidget(title)
         if isinstance(DEFAULTS[key], int):
             widget = QSpinBox()
         else:
             widget = QDoubleSpinBox()
             widget.setDecimals(decimals)
         self.register(key, widget)
+        if tooltip:
+            widget.setToolTip(tooltip)
         widget.setRange(low, high)
         widget.setValue(DEFAULTS[key])
         widget.setSuffix(suffix)
@@ -218,7 +227,9 @@ class HalftoneUI(QWidget):
         header.addLayout(brand)
         header.addStretch()
         self.btn_load = QPushButton('Open design')
+        self.btn_load.setToolTip('Open a design (PNG, JPG, or TIFF).')
         self.btn_save = QPushButton('Export PNG')
+        self.btn_save.setToolTip('Export the result as PNG or TIFF (auto-detected by extension).')
         self.btn_save.setObjectName('primary')
         self.btn_save.setEnabled(False)
         header.addWidget(self.btn_load)
@@ -247,32 +258,48 @@ class HalftoneUI(QWidget):
         self.combo_preset.addItem('Custom settings', None)
         for name in BUILTINS:
             self.combo_preset.addItem(name, name)
+        self.combo_preset.setToolTip('Start from a preset. Choosing one applies its settings; any change makes it "Custom".')
         preset_layout.addWidget(self.combo_preset)
         preset_row = QHBoxLayout()
         self.btn_save_preset = QPushButton('Save preset')
+        self.btn_save_preset.setToolTip('Save current settings as a JSON preset.')
         self.btn_load_preset = QPushButton('Load preset')
+        self.btn_load_preset.setToolTip('Load settings from a JSON preset.')
         preset_row.addWidget(self.btn_save_preset)
         preset_row.addWidget(self.btn_load_preset)
         preset_layout.addLayout(preset_row)
 
         coverage = self.group('02  /  PRINT COVERAGE', sidebar_layout)
-        self.slider_reduction, self.lbl_reduction = self.slider('ink_reduction', 'Ink reduction', coverage)
+        self.slider_reduction, self.lbl_reduction = self.slider(
+            'ink_reduction', 'Ink reduction', coverage,
+            'Reduce overall print coverage. 0% = no change; 100% = remove all coverage. '
+            'Typical 20-30% for breathable prints.')
         self.combo_reduction_target = self.register('reduction_target', StudioComboBox())
         for name, value in [('Whole design', 'all'), ('Black areas', 'black'),
                             ('White areas', 'white'), ('Black + white areas', 'both')]:
             self.combo_reduction_target.addItem(name, value)
+        self.combo_reduction_target.setToolTip(
+            'Choose which areas the ink reduction applies to: whole design, black areas, '
+            'white areas, or both.')
         coverage.addWidget(self.combo_reduction_target)
-        self.chk_knockout = self.check('knockout_black', 'Remove black · black fabric', coverage)
-        self.chk_knockout_white = self.check('knockout_white', 'Remove white · white fabric', coverage)
-        self.chk_knockout_garment = self.check('knockout_garment', 'Remove garment color', coverage)
+        self.chk_knockout = self.check('knockout_black', 'Remove black · black fabric', coverage,
+                                       'Remove true black backgrounds to save ink and improve breathability.')
+        self.chk_knockout_white = self.check('knockout_white', 'Remove white · white fabric', coverage,
+                                             'Remove white backgrounds for white garments.')
+        self.chk_knockout_garment = self.check('knockout_garment', 'Remove garment color', coverage,
+                                               'Remove any garment color you choose (color picker below).')
         garment_color_row = QHBoxLayout()
         self.btn_garment_color = QPushButton('Pick garment color')
+        self.btn_garment_color.setToolTip('Choose the garment color to remove from the design.')
         self.lbl_garment_color = QLabel('No color')
         self.lbl_garment_color.setObjectName('muted')
         garment_color_row.addWidget(self.btn_garment_color)
         garment_color_row.addWidget(self.lbl_garment_color)
         coverage.addLayout(garment_color_row)
-        self.slider_garment_tolerance, _ = self.slider('garment_tolerance', 'Garment tolerance', coverage)
+        self.slider_garment_tolerance, _ = self.slider(
+            'garment_tolerance', 'Garment tolerance', coverage,
+            'How close a pixel must be to the garment color to remove it. Lower = precise; '
+            'higher = removes more similar colors.')
 
         protection = self.group('03  /  KEEP THE DETAILS', sidebar_layout)
         self.chk_glow = self.check('preserve_glow', 'Preserve glow / soft edges', protection,
@@ -298,7 +325,11 @@ class HalftoneUI(QWidget):
         self.btn_about = QPushButton(f'About / Support · {VERSION}')
         self.btn_about.setObjectName('aboutSupport')
         self.btn_about.clicked.connect(self.show_about_dialog)
+        self.btn_guide = QPushButton('? Guía rápida')
+        self.btn_guide.setToolTip('Open a quick guide explaining every control.')
+        self.btn_guide.clicked.connect(self.show_guide)
         sidebar_column_layout.addWidget(self.btn_about)
+        sidebar_column_layout.addWidget(self.btn_guide)
 
         preview = QVBoxLayout()
         body.addLayout(preview, 1)
@@ -316,11 +347,15 @@ class HalftoneUI(QWidget):
         toolbar.addWidget(self.combo_garment)
         self.btn_compare = QPushButton('Before / After')
         self.btn_compare.setCheckable(True)
+        self.btn_compare.setToolTip('Toggle side-by-side Before/After comparison.')
         toolbar.addWidget(self.btn_compare)
         self.chk_show_knockout = QCheckBox('Show knockout mask')
+        self.chk_show_knockout.setToolTip('Highlight removed (knocked-out) areas in red on the preview.')
         toolbar.addWidget(self.chk_show_knockout)
         self.btn_fit = QPushButton('Fit')
+        self.btn_fit.setToolTip('Fit the image to the view.')
         self.btn_actual = QPushButton('100%')
+        self.btn_actual.setToolTip('Zoom to 100% (actual pixels).')
         toolbar.addWidget(self.btn_fit)
         toolbar.addWidget(self.btn_actual)
         preview.addLayout(toolbar)
@@ -359,6 +394,7 @@ class HalftoneUI(QWidget):
         layout.setSpacing(10)
         self.combo_shape = self.register('shape_name', StudioComboBox())
         self.combo_shape.addItems(['dot', 'line', 'square', 'cross', 'diamond', 'euclidean', 'ellipse', 'custom'])
+        self.combo_shape.setToolTip('Halftone dot shape: dot, line, square, cross, diamond, euclidean, ellipse, or a custom mask.')
         layout.addWidget(QLabel('Pattern shape'))
         layout.addWidget(self.combo_shape)
         self.combo_dither = self.register('dither_method', StudioComboBox())
@@ -374,22 +410,32 @@ class HalftoneUI(QWidget):
         self.slider_size = self.register('pattern_size', QSlider(Qt.Orientation.Horizontal))
         self.slider_size.setRange(5, 100)
         self.slider_size.setValue(30)
+        self.slider_size.setToolTip('Pattern cell size in pixels. Smaller = finer dots; larger = chunkier texture.')
         layout.addWidget(self.lbl_size_val)
         layout.addWidget(self.slider_size)
         self.lbl_angle_val = QLabel('Angle: 22°')
         self.slider_angle = self.register('angle', QSlider(Qt.Orientation.Horizontal))
         self.slider_angle.setRange(0, 90)
         self.slider_angle.setValue(22)
+        self.slider_angle.setToolTip('Halftone screen angle. 22.5° avoids visible moiré; 45° is classic for dots.')
         layout.addWidget(self.lbl_angle_val)
         layout.addWidget(self.slider_angle)
-        self.chk_alpha_halftone = self.check('alpha_halftone', 'Keep design colors', layout)
-        self.chk_antialias = self.check('antialias', 'Smooth edges (anti-aliasing)', layout)
+        self.chk_alpha_halftone = self.check('alpha_halftone', 'Keep design colors', layout,
+                                             'Keep original design colors (only alpha is halftoned). Uncheck to output grayscale halftone.')
+        self.chk_antialias = self.check('antialias', 'Smooth edges (anti-aliasing)', layout,
+                                        'Smooth halftone edges. Disable for hard 1-bit dots.')
         self.chk_halftone_entire = self.check('halftone_entire', 'Halftone entire design', layout,
                                              'Apply halftone to solid areas too, for a softer feel.')
-        self.spin_min_dot = self.spin('min_dot_px', 'Minimum dot size', 1, 15, layout, ' px')
-        self.slider_tolerance, _ = self.slider('black_tolerance', 'Black tolerance', layout)
-        self.slider_white_tolerance, _ = self.slider('white_tolerance', 'White tolerance', layout)
+        self.spin_min_dot = self.spin('min_dot_px', 'Minimum dot size', 1, 15, layout, ' px',
+                                      tooltip='Remove dots smaller than this (in pixels). 1 = no filter.')
+        self.slider_tolerance, _ = self.slider(
+            'black_tolerance', 'Black tolerance', layout,
+            'How close a pixel must be to black to be knocked out. Lower = only exact black; higher = removes near-black.')
+        self.slider_white_tolerance, _ = self.slider(
+            'white_tolerance', 'White tolerance', layout,
+            'How close a pixel must be to white to be knocked out. Lower = only exact white; higher = removes near-white.')
         self.btn_load_mask = QPushButton('Load custom mask')
+        self.btn_load_mask.setToolTip('Load a custom grayscale mask for the halftone pattern.')
         layout.addWidget(self.btn_load_mask)
         self.lbl_mask_status = self.note('No custom mask loaded.')
         layout.addWidget(self.lbl_mask_status)
@@ -397,13 +443,18 @@ class HalftoneUI(QWidget):
 
         printing = QWidget()
         layout = QVBoxLayout(printing)
-        self.chk_print_size = self.check('print_size_enabled', 'Set physical print size', layout)
-        self.spin_width = self.spin('print_width_cm', 'Width', .1, 200, layout, ' cm', 2)
-        self.spin_dpi = self.spin('output_dpi', 'Output resolution', 72, 1200, layout, ' DPI')
+        self.chk_print_size = self.check('print_size_enabled', 'Set physical print size', layout,
+                                         'Set physical print width and DPI (aspect ratio preserved).')
+        self.spin_width = self.spin('print_width_cm', 'Width', .1, 200, layout, ' cm', 2,
+                                    tooltip='Physical print width in centimeters.')
+        self.spin_dpi = self.spin('output_dpi', 'Output resolution', 72, 1200, layout, ' DPI',
+                                  tooltip='Output resolution in dots per inch.')
         self.lbl_print_size = self.note('Aspect ratio stays locked to the original design.')
         layout.addWidget(self.lbl_print_size)
-        self.chk_lpi = self.check('lpi_enabled', 'Use print density (LPI)', layout)
-        self.spin_lpi = self.spin('lpi', 'Pattern density', 5, 120, layout, ' LPI')
+        self.chk_lpi = self.check('lpi_enabled', 'Use print density (LPI)', layout,
+                                  'Use lines-per-inch for pattern density (cell size = DPI / LPI).')
+        self.spin_lpi = self.spin('lpi', 'Pattern density', 5, 120, layout, ' LPI',
+                                  tooltip='Lines per inch (pattern density). Higher = finer pattern.')
         layout.addWidget(self.note('LPI controls cells per inch. Export uses the selected DPI when print size or LPI is enabled.'))
         layout.addStretch()
         self.advanced_panel.addTab(printing, 'Print size')
@@ -413,17 +464,28 @@ class HalftoneUI(QWidget):
         self.chk_tones = self.check('tone_enabled', 'Adjust coverage by brightness', layout,
                                     'These three reductions replace the overall reduction when enabled.')
         layout.addWidget(self.note('Overrides overall reduction; blends smoothly between tonal ranges.'))
-        self.slider_shadows, _ = self.slider('shadow_reduction', 'Shadows', layout)
-        self.slider_midtones, _ = self.slider('midtone_reduction', 'Midtones', layout)
-        self.slider_lights, _ = self.slider('light_reduction', 'Highlights', layout)
-        self.slider_glow, _ = self.slider('glow_strength', 'Glow protection', layout)
-        self.slider_highlights, _ = self.slider('highlight_strength', 'Highlight protection', layout)
-        self.slider_details, _ = self.slider('detail_strength', 'Detail protection', layout)
-        self.spin_detail_width = self.spin('detail_width_mm', 'Fine stroke width', .1, 2, layout, ' mm', 2)
+        self.slider_shadows, _ = self.slider('shadow_reduction', 'Shadows', layout,
+                                             'Reduction applied to shadow areas (when brightness adjustment is on).')
+        self.slider_midtones, _ = self.slider('midtone_reduction', 'Midtones', layout,
+                                              'Reduction applied to midtone areas.')
+        self.slider_lights, _ = self.slider('light_reduction', 'Highlights', layout,
+                                            'Reduction applied to highlight areas.')
+        self.slider_glow, _ = self.slider('glow_strength', 'Glow protection', layout,
+                                          'Strength of glow protection. Higher = keeps more soft halos/edges.')
+        self.slider_highlights, _ = self.slider('highlight_strength', 'Highlight protection', layout,
+                                                'Strength of highlight protection. Higher = fewer holes in bright reflections.')
+        self.slider_details, _ = self.slider('detail_strength', 'Detail protection', layout,
+                                             'Strength of fine-detail protection. Higher = preserves thin lines/text more.')
+        self.spin_detail_width = self.spin('detail_width_mm', 'Fine stroke width', .1, 2, layout, ' mm', 2,
+                                          tooltip='Approximate fine stroke width to protect (mm).')
         self.chk_clean_haze = self.check('clean_haze', 'Clean semi-transparent haze', layout,
                                         'Remove stray low-alpha pixels that cause white haze.')
-        self.slider_haze_threshold, _ = self.slider('haze_threshold', 'Haze threshold', layout)
-        self.slider_shadow_boost, _ = self.slider('shadow_boost', 'Shadow color boost', layout)
+        self.slider_haze_threshold, _ = self.slider(
+            'haze_threshold', 'Haze threshold', layout,
+            'Alpha level below which pixels are removed as haze. Higher = removes more faint pixels.')
+        self.slider_shadow_boost, _ = self.slider(
+            'shadow_boost', 'Shadow color boost', layout,
+            'Restores color intensity in shadow areas. 0 = no change; 100 = maximum boost.')
         self.advanced_panel.addTab(tones, 'Protection')
 
     def toggle_advanced(self, checked):
@@ -471,3 +533,22 @@ class HalftoneUI(QWidget):
 
     def show_about_dialog(self):
         AboutDialog(self).exec()
+
+    def show_guide(self):
+        text = (
+            '<b>Cómo funciona cada control</b><br><br>'
+            '<b>01 · Presets:</b> empieza de un ajuste predefinido. Cualquier cambio lo vuelve "Custom".<br>'
+            '<b>02 · Cobertura:</b> "Ink reduction" quita transparencia (0% = nada, 100% = todo). '
+            'Los knockouts eliminan negro, blanco o el color de prenda elegido (ahorra tinta, mejora transpirabilidad).<br>'
+            '<b>03 · Detalles:</b> protegen glow, brillos y texto fino para que la reducción no los coma.<br>'
+            '<b>Pattern:</b> forma del punto (dot, line, square, cross, diamond, euclidean, ellipse, custom), '
+            'tamaño (más pequeño = punto más fino), ángulo (22.5° evita moaré) y método de tramado '
+            '(screening, Floyd-Steinberg o Bayer).<br>'
+            '<b>Print size:</b> ancho físico (cm) + DPI, o densidad en LPI (celda = DPI/LPI).<br>'
+            '<b>Protection:</b> ajuste por brillo (sombras/medios/luces), protección de detalle, '
+            'limpieza de haze y "Shadow boost" (revive color en sombras).<br><br>'
+            '<b>Vista:</b> "Before / After" compara con el original; "Show knockout mask" pinta de rojo '
+            'lo eliminado; "Fit" y "100%" controlan el zoom.<br><br>'
+            'Consejo: pasa el cursor sobre cualquier control para ver una explicación específica.'
+        )
+        QMessageBox.information(self, 'Espadan DTF Studio — Guía rápida', text)
